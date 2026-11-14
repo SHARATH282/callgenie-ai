@@ -56,8 +56,18 @@ export default function App() {
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          setAgents(data);
-          setSelectedAgent(data[0]);
+          // Merge with DEFAULT_AGENTS to ensure Mallishwari and all personas are always available
+          const merged = [...data];
+          DEFAULT_AGENTS.forEach((def) => {
+            if (!merged.some((m) => m.name.toLowerCase() === def.name.toLowerCase())) {
+              merged.push(def);
+            }
+          });
+          setAgents(merged);
+          setSelectedAgent((prev) => {
+            const found = merged.find((a) => a.name === prev?.name);
+            return found || merged[0];
+          });
         }
       })
       .catch((err) => console.log('Using default agents while backend connects'));
@@ -73,22 +83,50 @@ export default function App() {
   // 2. Setup Speech Recognition (Mic)
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
+    if (!SpeechRecognition) return;
+
+    try {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.lang = selectedAgent?.name === 'Mallishwari' ? 'te-IN' : 'en-US';
 
-      recognition.onresult = (event) => {
-        const spokenText = event.results[0][0].transcript;
-        setIsListening(false);
-        sendMessage(spokenText);
+      recognition.onstart = () => {
+        setIsListening(true);
       };
 
-      recognition.onerror = () => setIsListening(false);
-      recognition.onend = () => setIsListening(false);
+      recognition.onresult = (event) => {
+        setIsListening(false);
+        if (event.results && event.results[0] && event.results[0][0]) {
+          const spokenText = event.results[0][0].transcript;
+          if (spokenText) {
+            sendMessage(spokenText);
+          }
+        }
+      };
+
+      recognition.onerror = (event) => {
+        setIsListening(false);
+        console.warn('Speech recognition status:', event.error);
+        if (event.error === 'not-allowed') {
+          alert('Microphone access is blocked! Please click the lock 🔒 icon next to the URL in your browser and set Microphone to "Allow".');
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
       recognitionRef.current = recognition;
+    } catch (err) {
+      console.error('Speech recognition init error:', err);
     }
+
+    return () => {
+      try {
+        recognitionRef.current?.stop();
+      } catch (e) {}
+    };
   }, [isCalling, selectedAgent]);
 
   // 3. AI Voice Output (TTS)
@@ -99,8 +137,14 @@ export default function App() {
     utterance.rate = 1.05;
     
     const voices = window.speechSynthesis.getVoices();
-    const femaleVoice = voices.find((v) => v.name.includes('Female') || v.name.includes('Google US English') || v.name.includes('Zira'));
-    if (femaleVoice) utterance.voice = femaleVoice;
+    if (selectedAgent?.name === 'Mallishwari') {
+      const teluguVoice = voices.find((v) => v.lang.includes('te') || v.name.includes('Telugu'));
+      if (teluguVoice) utterance.voice = teluguVoice;
+      utterance.lang = 'te-IN';
+    } else {
+      const femaleVoice = voices.find((v) => v.name.includes('Female') || v.name.includes('Google US English') || v.name.includes('Zira'));
+      if (femaleVoice) utterance.voice = femaleVoice;
+    }
 
     window.speechSynthesis.speak(utterance);
   };
@@ -195,17 +239,53 @@ export default function App() {
     }, 600);
   };
 
-  const handleToggleMic = () => {
-    if (!recognitionRef.current) {
-      alert('Microphone speech recognition is supported in Chrome & Edge browsers.');
+  const handleToggleMic = async () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition is supported in Google Chrome & Microsoft Edge browsers. Please use Chrome or Edge.');
       return;
     }
+
     if (isListening) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current?.stop();
+      } catch (e) {}
       setIsListening(false);
-    } else {
+      return;
+    }
+
+    // Stop ongoing AI voice output so it does not loop back into the microphone
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    // Prompt browser for microphone permission if needed
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (err) {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          alert('Microphone access is blocked! Click the lock icon 🔒 next to the website URL in your address bar and set Microphone to "Allow".');
+          return;
+        }
+      }
+    }
+
+    try {
+      recognitionRef.current?.start();
       setIsListening(true);
-      recognitionRef.current.start();
+    } catch (err) {
+      console.warn('Mic start retry:', err);
+      try {
+        recognitionRef.current?.stop();
+        setTimeout(() => {
+          try {
+            recognitionRef.current?.start();
+            setIsListening(true);
+          } catch (e) {}
+        }, 150);
+      } catch (e) {}
     }
   };
 
@@ -418,16 +498,47 @@ export default function App() {
                 <div className="pre-call-state">
                   <div className="agent-avatar-large"><Bot size={48} /></div>
                   <h3>Ready to Call {selectedAgent?.name || 'an Agent'}?</h3>
-                  <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Make sure your speaker volume is up to hear the AI speak!</p>
+                  <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
+                    Make sure your speaker volume is up to hear the AI speak!
+                  </p>
 
                   <div className="agent-selector-bar">
-                    <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.4rem' }}>
+                    <label style={{ fontSize: '0.82rem', color: '#94a3b8', display: 'block', marginBottom: '0.4rem', fontWeight: 600 }}>
                       Choose AI Persona:
                     </label>
+
+                    {/* Interactive Persona Cards */}
+                    <div className="persona-cards-grid">
+                      {agents.map((ag) => {
+                        const isSelected = (selectedAgent?.name === ag.name);
+                        return (
+                          <div
+                            key={ag._id || ag.name}
+                            className={`persona-card-item ${isSelected ? 'active' : ''}`}
+                            onClick={() => setSelectedAgent(ag)}
+                          >
+                            <div className="persona-card-avatar">
+                              <Bot size={16} />
+                            </div>
+                            <div className="persona-card-info">
+                              <span className="persona-card-name">
+                                {ag.name} {isSelected && '✓'}
+                              </span>
+                              <span className="persona-card-role">{ag.role}</span>
+                              {ag.name === 'Mallishwari' && (
+                                <span className="persona-badge-telugu">🇮🇳 Telugu Assistant</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Dropdown Selector */}
                     <select
-                      value={selectedAgent?._id || DEFAULT_AGENTS[0]._id}
+                      value={selectedAgent?.name || agents[0]?.name || 'Sophia'}
                       onChange={(e) => {
-                        const ag = agents.find((a) => a._id === e.target.value);
+                        const ag = agents.find((a) => a.name === e.target.value) || DEFAULT_AGENTS.find((a) => a.name === e.target.value);
                         if (ag) setSelectedAgent(ag);
                       }}
                       className="select-agent"
@@ -435,15 +546,16 @@ export default function App() {
                         width: '100%',
                         background: '#1e293b',
                         color: 'white',
-                        padding: '0.75rem',
+                        padding: '0.7rem 0.85rem',
                         borderRadius: '8px',
                         border: '1px solid rgba(255,255,255,0.15)',
-                        fontSize: '0.9rem'
+                        fontSize: '0.88rem',
+                        cursor: 'pointer'
                       }}
                     >
                       {agents.map((a) => (
-                        <option key={a._id} value={a._id} style={{ background: '#1e293b', color: 'white' }}>
-                          {a.name} — {a.role}
+                        <option key={a._id || a.name} value={a.name} style={{ background: '#1e293b', color: 'white' }}>
+                          {a.name} — {a.role} {a.name === 'Mallishwari' ? '(Telugu)' : ''}
                         </option>
                       ))}
                     </select>
@@ -452,6 +564,9 @@ export default function App() {
                   <button className="btn-start-call" onClick={handleStartCall}>
                     <PhoneCall size={20} /><span>Dial Agent Now</span>
                   </button>
+                  <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>
+                    Click "Dial Agent Now" to start live audio and talk with your microphone.
+                  </p>
                 </div>
               ) : (
                 <div className="active-call-state">
@@ -481,23 +596,44 @@ export default function App() {
                     ))}
                   </div>
 
+                  {/* Visual Listening Banner */}
+                  {isListening ? (
+                    <div className="listening-banner active">
+                      <div className="pulse-dot-red"></div>
+                      <span>🎙️ <strong>Listening to your voice...</strong> Speak now into your mic!</span>
+                    </div>
+                  ) : (
+                    <div className="listening-banner idle">
+                      <span>💡 Click 🎙️ Speak below to talk, or type your message</span>
+                    </div>
+                  )}
+
                   <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="simulator-input-form">
                     <input
                       type="text"
-                      placeholder="Type or click the microphone to talk..."
+                      placeholder={isListening ? "Listening to your voice..." : "Type or click Speak to talk..."}
                       value={simulatedInput}
                       onChange={(e) => setSimulatedInput(e.target.value)}
                     />
+                    <button
+                      type="button"
+                      className={`btn-mic-inline ${isListening ? 'listening' : ''}`}
+                      onClick={handleToggleMic}
+                      title={isListening ? "Stop listening" : "Click to speak with microphone"}
+                    >
+                      <Mic size={15} color={isListening ? 'white' : '#818cf8'} />
+                      <span>{isListening ? 'Listening...' : 'Speak'}</span>
+                    </button>
                     <button type="submit" className="btn-send-sim">Send</button>
                   </form>
 
                   <div className="call-controls">
                     <button
-                      className={`control-circle ${isListening ? 'active-mute' : ''}`}
+                      className={`control-circle ${isListening ? 'listening' : ''}`}
                       onClick={handleToggleMic}
                       title={isListening ? "Listening... click to stop" : "Click to speak with microphone"}
                     >
-                      <Mic size={20} color={isListening ? '#f43f5e' : 'white'} />
+                      <Mic size={20} color="white" />
                     </button>
                     <button className="control-circle end-call-btn" onClick={handleEndCall} title="End Call">
                       <PhoneOff size={24} />

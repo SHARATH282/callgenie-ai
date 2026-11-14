@@ -74,6 +74,14 @@ const seedAgentsHandler = async (req, res) => {
 
     const defaultAgents = [
       {
+        name: 'Mallishwari',
+        role: 'Telugu Voice Assistant',
+        voice: 'Cartesia - Ramya',
+        latency: '220ms',
+        successRate: '96.5%',
+        status: 'ready'
+      },
+      {
         name: 'Sophia',
         role: 'Real Estate Sales Specialist',
         voice: 'ElevenLabs - Serena (Warm & Professional)',

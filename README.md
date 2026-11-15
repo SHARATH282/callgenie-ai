@@ -1,4 +1,4 @@
-# 🧞‍♂️ CallGenie AI — Autonomous Telephony & Voice AI Platform
+m# 🧞‍♂️ CallGenie AI — Autonomous Telephony & Voice AI Platform
 
 [![Live Demo](https://img.shields.io/badge/Frontend-Vercel-black?style=for-the-badge&logo=vercel)](https://callgenie-ai-amber.vercel.app)
 [![Backend API](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://callgenie-ai-52ra.onrender.com)
@@ -6,15 +6,6 @@
 [![AI Voice](https://img.shields.io/badge/Voice%20AI-OmniDimension-7C3AED?style=for-the-badge)](https://omnidimension.com)
 
 **CallGenie AI** is a production-grade, full-stack autonomous AI telephony and voice operations console. It enables enterprises to deploy, monitor, and converse with hyper-realistic, low-latency multilingual voice AI personas with live speech synthesis, real-time transcription, and automated cloud call persistence.
-
----
-
-## 🚀 Live Deployments
-
-- **🌐 Live Web Console (Vercel):** [https://callgenie-ai-amber.vercel.app](https://callgenie-ai-amber.vercel.app)
-- **⚡ Backend REST API (Render):** [https://callgenie-ai-52ra.onrender.com](https://callgenie-ai-52ra.onrender.com)
-- **🍃 Cloud Database:** MongoDB Atlas (AWS Mumbai `ap-south-1`)
-- **📦 GitHub Repository:** [https://github.com/SHARATH282/callgenie-ai.git](https://github.com/SHARATH282/callgenie-ai.git)
 
 ---
 

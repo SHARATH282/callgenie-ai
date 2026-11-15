@@ -1,4 +1,4 @@
-m# 🧞‍♂️ CallGenie AI — Autonomous Telephony & Voice AI Platform
+# 🧞‍♂️ CallGenie AI — Autonomous Telephony & Voice AI Platform
 
 [![Live Demo](https://img.shields.io/badge/Frontend-Vercel-black?style=for-the-badge&logo=vercel)](https://callgenie-ai-amber.vercel.app)
 [![Backend API](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://callgenie-ai-52ra.onrender.com)
@@ -87,45 +87,3 @@ m# 🧞‍♂️ CallGenie AI — Autonomous Telephony & Voice AI Platform
 - `POST /api/webhook/omnidimension` — Ingest post-call payloads directly from OmniDimension.
 
 ---
-
-## 💻 Local Development Setup
-
-### Prerequisites
-- Node.js (v18+)
-- npm or pnpm
-- MongoDB Atlas cluster connection string
-
-### 1. Clone the repository
-```bash
-git clone https://github.com/SHARATH282/callgenie-ai.git
-cd callgenie-ai
-```
-
-### 2. Configure Backend
-```bash
-cd backend
-npm install
-```
-Create a `.env` file inside `backend/`:
-```env
-PORT=5000
-MONGODB_URI=your_mongodb_atlas_connection_string
-```
-Start backend:
-```bash
-npm run dev
-```
-
-### 3. Configure Frontend
-From the root directory:
-```bash
-npm install
-npm run dev
-```
-Open [http://localhost:5173](http://localhost:5173) in Google Chrome or Microsoft Edge.
-
----
-
-## 👥 Authors & Team
-- **Sharath Admin** — Full-Stack Voice AI Telephony Engineer
-- Built with ❤️ for next-generation multilingual conversational AI.
